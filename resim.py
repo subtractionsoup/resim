@@ -230,10 +230,9 @@ class Resim:
             "2021-04-05T15:23:26.102Z": 1,
             "2021-04-12T15:19:56.073Z": -2,
             "2021-04-12T15:22:50.866Z": 1, # there's a low roll on the item damage here
-            "2021-05-10T18:05:08.668Z": 1, # likely mind trick edge case?
             "2021-05-13T15:00:17.580Z": -1,
             "2021-05-13T16:38:59.820Z": 387,  # skipping latesiesta
-            "2021-06-16T06:22:08.507Z": 1, # elsewhere return related? seeker returns and immediately rolls?
+            "2021-06-16T06:22:07.019Z": 1, # caused by Seeker returning from Elsewhere and immediately rolling Seeker for the other Elsewhere player
 
             "2021-06-21T16:21:16.847Z": 1,
             "2021-06-22T07:24:35.976Z": 1, # placing fifth base?
@@ -244,23 +243,21 @@ class Resim:
             "2021-06-23T07:03:45.048Z": 3, # double play?
             "2021-06-23T07:21:32.667Z": 2, # advance on sac with same player on base twice
             "2021-06-23T11:00:54.472Z": 1, # undefined player tags up and scores. Their item breaks.
-            "2021-06-24T10:13:01.619Z": 4, # advance on sac with same player on base twice
+            "2021-06-24T10:13:01.619Z": 4, # Caused by Advance & Item Damage handling. Two Siobhan's on base. Needs 3 more damage rolls. 2 rolls for Siobhan #1 scoring, and 1 roll for Siobhan #2 advancing bases.
             "2021-06-24T13:09:16.489Z": 1, # possibly caused by "The Echo Chamber traps a wave. Wyatt Mason X is temporarily Reverberating!"
             "2021-06-24T21:18:53.536Z": -1, # Too many item damage rolls when an item takes damage.
             "2021-06-24T23:09:12.212Z": 2, # Might be a fake home run, but then it'd be 1 roll too long.
             "2021-07-26T16:08:28.076Z": 1, # consumer roll suspiciously low, might actually be party
             "2021-07-26T18:09:17.129Z": 2, # observed?
             "2021-07-26T18:20:09.430Z": 1, # consumer attack item defend push?
-            "2021-07-28T09:22:11.719Z": 3,
-            "2021-07-28T11:03:52.137Z": 1, # this might be secret base attract - the threshold would've had to be duobled, but who knows...
 
             # the roll in 2021-07-26T17:09:56.933Z really happens earlier, this event being delayed breaks some stuff
             "2021-07-26T17:09:54.480Z": 1,
             "2021-07-26T17:09:57.341Z": -1,
             # "2021-07-22T09:18:04.585Z": 3, # no idea
-            "2021-07-23T08:27:00.305Z": 1, # grand slam weird?
-            "2021-07-23T09:11:48.567Z": 1, # grand slam weird?
-            "2021-07-23T10:19:55.173Z": 1, # grand slam weird?
+            "2021-07-23T08:27:00.305Z": 1, # grand slam weird? Amphitheater is only stadium with both balloon mods - Hot Air Balloon Pop Check?
+            "2021-07-23T09:11:48.567Z": 1, # grand slam weird? Amphitheater is only stadium with both balloon mods - Hot Air Balloon Pop Check?
+            "2021-07-23T10:19:55.173Z": 1, # grand slam weird? Amphitheater is only stadium with both balloon mods - Hot Air Balloon Pop Check?
             "2021-07-22T10:07:23.346Z": -1, # no idea
 
             "2021-07-23T14:22:51.364Z": -1, # there's a couple different places this can go, not sure where the problem is
@@ -1462,6 +1459,8 @@ class Resim:
 
             if is_at_bat_end:
                 self.roll("at bat reverb")
+            if "draws a walk" in self. desc and "strikes out thinking" in self.desc:
+                self.roll("psychic bug reverb")
 
     def handle_mild(self):
         mild_roll = self.roll("mild")
@@ -1632,8 +1631,13 @@ class Resim:
             if "uses a Mind Trick" in self.desc:
                 # batter successfully converted strikeout to walk
                 if "strikes out swinging." in self.desc:
+                    if self.batter.undefined():
+                        self.roll("undefined (psychiccontact)")
                     psychiccontact_roll = self.roll("psychiccontact")  # noqa: F841
 
+                if self.batter.undefined() and self.batting_team.has_mod("PSYCHIC"):
+                    self.roll("undefined (psychic)")
+                    self.roll("undefined (psychic)")
                 bsychic_roll = self.roll("bsychic")
                 self.log_roll(Csv.BSYCHIC, "Success", bsychic_roll, True)
 
@@ -4023,7 +4027,7 @@ class Resim:
         attractor_eligible = not secret_runner_id
         if attractor_eligible:
             attract_roll = self.roll("secret base attract")
-            if attract_roll < 0.00035:  # guessing at threshold, was 0.0002 in s15/s16?
+            if attract_roll < 0.00035 or attract_roll < 0.001 and self.season>=22:  # guessing at threshold, was 0.0002 in s15/s16?
                 update_one_after_next = self.data.get_update(self.game_id, self.play + 2)
                 attractor_id = self.next_update.get("secretBaserunner") or update_one_after_next.get("secretBaserunner")
                 if attractor_id:
